@@ -7,6 +7,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Add current directory to PATH so whisper can find ffmpeg/ffprobe
+os.environ["PATH"] = f"{os.path.abspath('.')}{os.pathsep}{os.environ['PATH']}"
+# Also add the download bin directory to PATH
+os.environ["PATH"] = f"{os.path.abspath('.')}/ffmpeg-master-latest-win64-gpl-shared/bin{os.pathsep}{os.environ['PATH']}"
+
 # Find ffmpeg and ffprobe - check PATH then current directory
 def find_ffmpeg(name: str) -> str:
     """Find ffmpeg/ffprobe executable, check PATH then current directory."""
@@ -24,13 +29,19 @@ def find_ffmpeg(name: str) -> str:
 
     # Check current directory for .exe
     exe_name = f"{name}.exe"
-    if Path(exe_name).exists():
-        return exe_name
+    exe_path = Path(exe_name).absolute()
+    if exe_path.exists():
+        return str(exe_path)
 
     # Check in ffmpeg/bin subdirectory
-    ffmpeg_bin_exe = Path(f"ffmpeg/bin/{exe_name}")
+    ffmpeg_bin_exe = Path(f"ffmpeg/bin/{exe_name}").absolute()
     if ffmpeg_bin_exe.exists():
         return str(ffmpeg_bin_exe)
+
+    # Check downloaded ffmpeg-master-latest-win64-gpl-shared/bin
+    ffmpeg_dl_exe = Path(f"ffmpeg-master-latest-win64-gpl-shared/bin/{exe_name}").absolute()
+    if ffmpeg_dl_exe.exists():
+        return str(ffmpeg_dl_exe)
 
     return name
 
@@ -60,6 +71,7 @@ def parse_args():
 
 def check_dependencies():
     """Check if ffmpeg is available."""
+    # Try direct first
     try:
         result = subprocess.run(
             [FFMPEG, "-version"],
@@ -78,17 +90,37 @@ def check_dependencies():
         print(f"[OK] ffprobe found at {FFPROBE}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("[ERROR] ffmpeg/ffprobe not found")
-        print("\nPlease install ffmpeg:")
-        print("  1. Download from: https://github.com/BtbN/FFmpeg-Builds/releases")
-        print("  2. Download ffmpeg-master-latest-win64-gpl.zip")
-        print("  3. Extract ffmpeg.exe and ffprobe.exe to this directory")
-        print("  Or install via package manager:")
-        print("  - Windows (Chocolatey): choco install ffmpeg")
-        print("  - Windows (winget): winget install ffmpeg")
-        print("  - macOS: brew install ffmpeg")
-        print("  - Ubuntu/Debian: sudo apt install ffmpeg")
-        return False
+        # Try with shell=True for Git Bash / MSYS2 environments
+        try:
+            result = subprocess.run(
+                f"{FFMPEG} -version",
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=True
+            )
+            print(f"[OK] ffmpeg found at {FFMPEG}")
+            result = subprocess.run(
+                f"{FFPROBE} -version",
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=True
+            )
+            print(f"[OK] ffprobe found at {FFPROBE}")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("[ERROR] ffmpeg/ffprobe not found")
+            print("\nPlease install ffmpeg:")
+            print("  1. Download from: https://github.com/BtbN/FFmpeg-Builds/releases")
+            print("  2. Download ffmpeg-master-latest-win64-gpl.zip")
+            print("  3. Extract ffmpeg.exe and ffprobe.exe to this directory")
+            print("  Or install via package manager:")
+            print("  - Windows (Chocolatey): choco install ffmpeg")
+            print("  - Windows (winget): winget install ffmpeg")
+            print("  - macOS: brew install ffmpeg")
+            print("  - Ubuntu/Debian: sudo apt install ffmpeg")
+            return False
 
 
 def has_subtitle_tracks(video_path: Path) -> bool:
@@ -102,7 +134,12 @@ def has_subtitle_tracks(video_path: Path) -> bool:
         "-of", "default=noprint_wrappers=1",
         str(video_path),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except (FileNotFoundError):
+        # Retry with shell=True for MSYS2/Git Bash
+        cmd_str = " ".join([FFPROBE, "-v", "error", "-select_streams", "s", "-show_entries", "stream=codec_type", "-of", "default=noprint_wrappers=1", str(video_path)])
+        result = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
     # If any output, there are subtitle streams
     return bool(result.stdout.strip())
 
@@ -119,7 +156,12 @@ def extract_embedded_subtitles(video_path: Path, output_path: Path) -> bool:
         "-c", "copy",
         str(temp_srt),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        # Retry with shell=True for MSYS2/Git Bash
+        cmd_str = " ".join([FFMPEG, "-y", "-i", f'"{str(video_path)}"', "-map", "0:s:0", "-c", "copy", f'"{str(temp_srt)}"'])
+        result = subprocess.run(cmd_str, capture_output=True, text=True, shell=True)
     if result.returncode != 0:
         print(f"  Failed to extract subtitles: {result.stderr}")
         return False
