@@ -63,6 +63,49 @@ def has_subtitle_tracks(video_path: Path) -> bool:
     return bool(result.stdout.strip())
 
 
+def extract_embedded_subtitles(video_path: Path, output_path: Path) -> bool:
+    """Extract first subtitle track and convert to plain text."""
+    # Extract to .srt first
+    temp_srt = video_path.with_suffix(".srt")
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", str(video_path),
+        "-map", "0:s:0",  # First subtitle stream
+        "-c", "copy",
+        str(temp_srt),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"  Failed to extract subtitles: {result.stderr}")
+        return False
+
+    # Convert SRT to plain text
+    with open(temp_srt, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()
+
+    text = []
+    for line in lines:
+        line = line.strip()
+        # Skip line numbers, timestamps, and empty lines
+        if not line or line.isdigit() or "-->" in line:
+            continue
+        text.append(line)
+
+    # Join into single text block
+    plain_text = " ".join(text)
+
+    # Write output
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(plain_text)
+
+    # Clean up temp .srt
+    os.remove(temp_srt)
+
+    print(f"  Extracted embedded subtitles to {output_path.name}")
+    return True
+
+
 def main():
     args = parse_args()
     if not check_dependencies():
@@ -71,8 +114,17 @@ def main():
     mp4_files = list(Path(".").glob("*.mp4"))
     print(f"Found {len(mp4_files)} MP4 file(s)")
     for video in mp4_files:
-        has_sub = has_subtitle_tracks(video)
-        print(f"  {video.name}: has_subtitles={has_sub}")
+        print(f"\nProcessing: {video.name}")
+        output_path = video.with_suffix(".txt")
+        if output_path.exists():
+            print(f"  Output already exists, skipping")
+            continue
+
+        if has_subtitle_tracks(video):
+            print(f"  Found embedded subtitles, extracting...")
+            success = extract_embedded_subtitles(video, output_path)
+        else:
+            print(f"  No embedded subtitles found, will transcribe later...")
     # Import whisper here so help works even if whisper not installed
     global whisper
     import whisper
