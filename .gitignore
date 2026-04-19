@@ -1,0 +1,14 @@
+# Ignore video files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.flv
+*.wmv
+
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+
+# Ignore output subtitles (keep them out of git if desired)
+# *.txt
