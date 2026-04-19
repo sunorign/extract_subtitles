@@ -106,6 +106,29 @@ def extract_embedded_subtitles(video_path: Path, output_path: Path) -> bool:
     return True
 
 
+def transcribe_audio(video_path: Path, output_path: Path, model_name: str, language: str | None) -> bool:
+    """Transcribe audio from video using OpenAI Whisper."""
+    print(f"  Loading Whisper model '{model_name}'...")
+    try:
+        model = whisper.load_model(model_name)
+        print(f"  Transcribing audio... (this may take a while)")
+        result = model.transcribe(
+            str(video_path),
+            language=language,
+            verbose=False,
+        )
+
+        # Write plain text
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(result["text"].strip())
+
+        print(f"  Transcription saved to {output_path.name}")
+        return True
+    except Exception as e:
+        print(f"  Failed to transcribe audio: {e}")
+        return False
+
+
 def main():
     args = parse_args()
     if not check_dependencies():
@@ -113,6 +136,10 @@ def main():
     print(f"Looking for MP4 files in current directory...")
     mp4_files = list(Path(".").glob("*.mp4"))
     print(f"Found {len(mp4_files)} MP4 file(s)")
+    # Import whisper here so help works even if whisper not installed
+    global whisper
+    import whisper
+
     for video in mp4_files:
         print(f"\nProcessing: {video.name}")
         output_path = video.with_suffix(".txt")
@@ -124,10 +151,11 @@ def main():
             print(f"  Found embedded subtitles, extracting...")
             success = extract_embedded_subtitles(video, output_path)
         else:
-            print(f"  No embedded subtitles found, will transcribe later...")
-    # Import whisper here so help works even if whisper not installed
-    global whisper
-    import whisper
+            print(f"  No embedded subtitles found, transcribing with Whisper...")
+            success = transcribe_audio(video, output_path, args.model, args.language)
+
+        if not success:
+            print(f"  Failed to process {video.name}")
 
 
 if __name__ == "__main__":
