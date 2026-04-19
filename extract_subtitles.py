@@ -7,6 +7,37 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Find ffmpeg and ffprobe - check PATH then current directory
+def find_ffmpeg(name: str) -> str:
+    """Find ffmpeg/ffprobe executable, check PATH then current directory."""
+    # First check if it's in PATH
+    try:
+        result = subprocess.run(
+            [name, "-version"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return name
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # Check current directory for .exe
+    exe_name = f"{name}.exe"
+    if Path(exe_name).exists():
+        return exe_name
+
+    # Check in ffmpeg/bin subdirectory
+    ffmpeg_bin_exe = Path(f"ffmpeg/bin/{exe_name}")
+    if ffmpeg_bin_exe.exists():
+        return str(ffmpeg_bin_exe)
+
+    return name
+
+
+FFMPEG = find_ffmpeg("ffmpeg")
+FFPROBE = find_ffmpeg("ffprobe")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -31,17 +62,30 @@ def check_dependencies():
     """Check if ffmpeg is available."""
     try:
         result = subprocess.run(
-            ["ffmpeg", "-version"],
+            [FFMPEG, "-version"],
             capture_output=True,
             text=True,
             check=True
         )
-        print("[OK] ffmpeg found")
+        print(f"[OK] ffmpeg found at {FFMPEG}")
+        # Also check ffprobe
+        result = subprocess.run(
+            [FFPROBE, "-version"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print(f"[OK] ffprobe found at {FFPROBE}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("[ERROR] ffmpeg not found in PATH")
-        print("\nPlease install ffmpeg first:")
-        print("  - Windows: choco install ffmpeg (via Chocolatey)")
+        print("[ERROR] ffmpeg/ffprobe not found")
+        print("\nPlease install ffmpeg:")
+        print("  1. Download from: https://github.com/BtbN/FFmpeg-Builds/releases")
+        print("  2. Download ffmpeg-master-latest-win64-gpl.zip")
+        print("  3. Extract ffmpeg.exe and ffprobe.exe to this directory")
+        print("  Or install via package manager:")
+        print("  - Windows (Chocolatey): choco install ffmpeg")
+        print("  - Windows (winget): winget install ffmpeg")
         print("  - macOS: brew install ffmpeg")
         print("  - Ubuntu/Debian: sudo apt install ffmpeg")
         return False
@@ -51,7 +95,7 @@ def has_subtitle_tracks(video_path: Path) -> bool:
     """Check if video file has any embedded subtitle tracks."""
     # Use ffprobe to list streams
     cmd = [
-        "ffprobe",
+        FFPROBE,
         "-v", "error",
         "-select_streams", "s",
         "-show_entries", "stream=codec_type",
@@ -68,7 +112,7 @@ def extract_embedded_subtitles(video_path: Path, output_path: Path) -> bool:
     # Extract to .srt first
     temp_srt = video_path.with_suffix(".srt")
     cmd = [
-        "ffmpeg",
+        FFMPEG,
         "-y",
         "-i", str(video_path),
         "-map", "0:s:0",  # First subtitle stream
