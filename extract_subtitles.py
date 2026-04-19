@@ -47,6 +47,22 @@ def check_dependencies():
         return False
 
 
+def has_subtitle_tracks(video_path: Path) -> bool:
+    """Check if video file has any embedded subtitle tracks."""
+    # Use ffprobe to list streams
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-select_streams", "s",
+        "-show_entries", "stream=codec_type",
+        "-of", "default=noprint_wrappers=1",
+        str(video_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    # If any output, there are subtitle streams
+    return bool(result.stdout.strip())
+
+
 def main():
     args = parse_args()
     if not check_dependencies():
@@ -54,6 +70,9 @@ def main():
     print(f"Looking for MP4 files in current directory...")
     mp4_files = list(Path(".").glob("*.mp4"))
     print(f"Found {len(mp4_files)} MP4 file(s)")
+    for video in mp4_files:
+        has_sub = has_subtitle_tracks(video)
+        print(f"  {video.name}: has_subtitles={has_sub}")
     # Import whisper here so help works even if whisper not installed
     global whisper
     import whisper
