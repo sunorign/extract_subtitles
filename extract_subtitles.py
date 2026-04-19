@@ -27,14 +27,36 @@ def parse_args():
     return args
 
 
+def check_dependencies():
+    """Check if ffmpeg is available."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print("[OK] ffmpeg found")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("[ERROR] ffmpeg not found in PATH")
+        print("\nPlease install ffmpeg first:")
+        print("  - Windows: choco install ffmpeg (via Chocolatey)")
+        print("  - macOS: brew install ffmpeg")
+        print("  - Ubuntu/Debian: sudo apt install ffmpeg")
+        return False
+
+
 def main():
     args = parse_args()
-    # Import whisper here so help works even if whisper not installed
-    global whisper
-    import whisper
+    if not check_dependencies():
+        sys.exit(1)
     print(f"Looking for MP4 files in current directory...")
     mp4_files = list(Path(".").glob("*.mp4"))
     print(f"Found {len(mp4_files)} MP4 file(s)")
+    # Import whisper here so help works even if whisper not installed
+    global whisper
+    import whisper
 
 
 if __name__ == "__main__":
