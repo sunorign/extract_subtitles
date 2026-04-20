@@ -12,3 +12,7 @@ __pycache__/
 
 # Ignore output subtitles (keep them out of git if desired)
 # *.txt
+
+# Ignore git worktrees
+.worktrees/
+worktrees/
