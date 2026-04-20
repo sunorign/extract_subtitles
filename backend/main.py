@@ -25,8 +25,10 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Add current directory and ffmpeg locations to PATH
-os.environ["PATH"] = f"{os.path.abspath(project_root)}{os.pathsep}{os.environ['PATH']}"
-os.environ["PATH"] = f"{os.path.abspath(project_root)}/ffmpeg-master-latest-win64-gpl-shared/bin{os.pathsep}{os.environ['PATH']}"
+# The actual project root is two levels up (this is a git worktree)
+original_project_root = project_root.parent.parent
+os.environ["PATH"] = f"{os.path.abspath(original_project_root)}{os.pathsep}{os.environ['PATH']}"
+os.environ["PATH"] = f"{os.path.abspath(original_project_root)}/ffmpeg-master-latest-win64-gpl-shared/bin{os.pathsep}{os.environ['PATH']}"
 
 
 app = FastAPI(title="Subtitle Extractor Backend", version="1.0.0")

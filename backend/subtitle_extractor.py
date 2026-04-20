@@ -5,8 +5,14 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 # Add project root to Python path
+# This is a git worktree - actual project root is two levels up
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Add ffmpeg locations to PATH (ffmpeg is in original project root)
+original_project_root = project_root.parent.parent
+os.environ["PATH"] = f"{os.path.abspath(original_project_root)}{os.pathsep}{os.environ['PATH']}"
+os.environ["PATH"] = f"{os.path.abspath(original_project_root)}/ffmpeg-master-latest-win64-gpl-shared/bin{os.pathsep}{os.environ['PATH']}"
 
 # Re-import functions from the existing script
 from extract_subtitles import (
