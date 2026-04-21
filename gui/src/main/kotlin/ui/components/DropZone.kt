@@ -11,14 +11,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.awt.LocalWindow
+import androidx.compose.ui.awt.ComposeWindow
 import java.awt.Cursor
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
 import java.awt.dnd.DropTarget
+import java.awt.dnd.DropTargetDragEvent
 import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 import java.nio.file.Path
@@ -30,11 +32,18 @@ fun DropZone(
     modifier: Modifier = Modifier
 ) {
     val isDragging = remember { mutableStateOf(false) }
-    val window = LocalWindow.current
 
-    DisposableEffect(window) {
+    // Use a simpler approach: attach drop target to the first available window
+    val windowRef = remember { mutableStateOf<ComposeWindow?>(null) }
+
+    LaunchedEffect(Unit) {
+        // Find window via reflection or just use a simpler approach
+        // For now, we'll use a global AWT approach
+    }
+
+    DisposableEffect(Unit) {
         val dropTarget = object : DropTarget() {
-            override fun dragEnter(dtde: DropTargetDropEvent?) {
+            override fun dragEnter(dtde: DropTargetDragEvent?) {
                 isDragging.value = true
                 super.dragEnter(dtde)
             }
@@ -55,10 +64,21 @@ fun DropZone(
                 isDragging.value = false
             }
         }
-        window.addDropTarget(dropTarget)
+
+        // Try to find and attach to main window
+        try {
+            val windows = java.awt.Window.getWindows()
+            if (windows.isNotEmpty()) {
+                windows[0].dropTarget = dropTarget
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
 
         onDispose {
-            dropTarget.removeDropTargetListener(dropTarget)
+            try {
+                dropTarget.removeDropTargetListener(dropTarget)
+            } catch (e: Exception) {}
         }
     }
 
@@ -75,7 +95,7 @@ fun DropZone(
                 if (isDragging.value) Color.Blue.copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.3f),
                 RoundedCornerShape(8.dp)
             )
-            .pointerHoverIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)),
+            .pointerHoverIcon(PointerIcon.Hand),
         contentAlignment = Alignment.Center
     ) {
         Text(

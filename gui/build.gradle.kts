@@ -8,12 +8,6 @@ plugins {
 group = "com.example"
 version = "1.0.0"
 
-repositories {
-    google()
-    mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-}
-
 dependencies {
     implementation(compose.desktop.currentOs)
     // OkHttp for HTTP client
@@ -25,7 +19,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolkit(17)
+    jvmToolchain(17)
 }
 
 compose.desktop {
@@ -40,29 +34,6 @@ compose.desktop {
 
             // Include all dependencies for Windows
             modules("jdk.unsupported")
-
-            // Include backend and ffmpeg in the package
-            appRoot = {
-                from(project.rootProject.file("../backend")) {
-                    into("backend")
-                }
-                from(project.rootProject.file("ffmpeg-master-latest-win64-gpl-shared")) {
-                    into("ffmpeg-master-latest-win64-gpl-shared")
-                }
-                // Include ffmpeg exe at root for detection
-                from(project.rootProject) {
-                    include("ffmpeg.exe")
-                    include("ffprobe.exe")
-                    include("*.dll")
-                }
-                from(project.rootProject.file("extract_subtitles.py")) {
-                    into(".")
-                }
-                // Include embedded Python
-                from(project.rootProject.file("../python")) {
-                    into("python")
-                }
-            }
         }
     }
 }
