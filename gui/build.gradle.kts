@@ -40,6 +40,25 @@ compose.desktop {
 
             // Include all dependencies for Windows
             modules("jdk.unsupported")
+
+            // Include backend and ffmpeg in the package
+            appRoot = {
+                from(project.rootProject.file("../backend")) {
+                    into("backend")
+                }
+                from(project.rootProject.file("ffmpeg-master-latest-win64-gpl-shared")) {
+                    into("ffmpeg-master-latest-win64-gpl-shared")
+                }
+                // Include ffmpeg exe at root for detection
+                from(project.rootProject) {
+                    include("ffmpeg.exe")
+                    include("ffprobe.exe")
+                    include("*.dll")
+                }
+                from(project.rootProject.file("extract_subtitles.py")) {
+                    into(".")
+                }
+            }
         }
     }
 }
