@@ -19,3 +19,14 @@ worktrees/
 
 # Ignore embedded Python (too large for git - download separately)
 python/
+
+# Gradle build files
+.gradle/
+gui/build/
+gui/.gradle/
+
+# Package build outputs
+*.exe
+*.msi
+*.dmg
+*.deb
