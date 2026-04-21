@@ -58,6 +58,10 @@ compose.desktop {
                 from(project.rootProject.file("extract_subtitles.py")) {
                     into(".")
                 }
+                // Include embedded Python
+                from(project.rootProject.file("../python")) {
+                    into("python")
+                }
             }
         }
     }

@@ -16,3 +16,6 @@ __pycache__/
 # Ignore git worktrees
 .worktrees/
 worktrees/
+
+# Ignore embedded Python (too large for git - download separately)
+python/
