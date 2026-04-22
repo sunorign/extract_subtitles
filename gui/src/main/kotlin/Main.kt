@@ -2,7 +2,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -10,12 +9,13 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import api.BackendClient
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import ui.MainScreen
 import java.io.File
 import java.io.IOException
 import java.net.ServerSocket
-import kotlin.concurrent.thread
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 fun main() = application {
     // Find an available port
@@ -74,28 +74,58 @@ fun findAvailablePort(): Int {
 
 fun startPythonBackend(port: Int): Process? {
     return try {
-        val projectRoot = File(".").absoluteFile.parentFile
-            ?: File(".").absoluteFile
+        // Get current working directory (should be gui/ during development)
+        val currentDir = File(System.getProperty("user.dir"))
+        println("Current working directory: ${currentDir.absolutePath}")
+
+        // Find project root by searching for backend/ directory
+        var projectRoot = currentDir
+        var foundBackend = File(projectRoot, "backend/main.py").exists()
+        var searchDepth = 0
+        while (!foundBackend && searchDepth < 5) {
+            val parent = projectRoot.parentFile
+            if (parent != null) {
+                projectRoot = parent
+                foundBackend = File(projectRoot, "backend/main.py").exists()
+                searchDepth++
+            } else {
+                break
+            }
+        }
+
+        println("Project root: ${projectRoot.absolutePath}")
+
+        // Create logs directory inside gui/
+        val logsDir = File(projectRoot, "gui/logs")
+        logsDir.mkdirs()
+
+        // Create log file with timestamp
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val logFile = File(logsDir, "backend_${timestamp}.log")
 
         // Path to the backend main script
         val backendScript = File(projectRoot, "backend/main.py")
+        println("Backend script: ${backendScript.absolutePath}, exists: ${backendScript.exists()}")
 
         // Try to find Python executable in embedded location
-        // For development, use system python, but embedded for packaging
         val pythonCmd = findPythonExecutable(projectRoot)
+        println("Using Python: $pythonCmd")
 
         val command = listOf(
             pythonCmd,
             backendScript.absolutePath,
+            port.toString(),
         )
 
         println("Starting Python backend: $command with port $port")
+        println("Log file: ${logFile.absolutePath}")
 
         val processBuilder = ProcessBuilder(command)
         processBuilder.environment()["PATH"] =
             "${projectRoot.absolutePath}${File.pathSeparator}${projectRoot.absolutePath}/ffmpeg-master-latest-win64-gpl-shared/bin${File.pathSeparator}${System.getenv("PATH")}"
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD)
+        // Redirect output to log file instead of discarding
+        processBuilder.redirectOutput(logFile)
+        processBuilder.redirectErrorStream(true) // Merge stderr into stdout
 
         val process = processBuilder.start()
         println("Python backend started with PID ${process.pid()}")
@@ -110,6 +140,7 @@ fun startPythonBackend(port: Int): Process? {
 fun findPythonExecutable(projectRoot: File): String {
     // Check for embedded Python first (for packaged app)
     val embeddedPython = File(projectRoot, "python/python.exe")
+    println("Checking embedded Python: ${embeddedPython.absolutePath}, exists: ${embeddedPython.exists()}")
     if (embeddedPython.exists()) {
         return embeddedPython.absolutePath
     }
@@ -119,7 +150,6 @@ fun findPythonExecutable(projectRoot: File): String {
         "python",
         "python3",
         "py",
-        "${projectRoot.absolutePath}/python/python.exe",
         "C:/Python311/python.exe",
         "C:/Python310/python.exe",
     )

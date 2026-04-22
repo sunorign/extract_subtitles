@@ -30,3 +30,18 @@ gui/.gradle/
 *.msi
 *.dmg
 *.deb
+
+# Logs and temp files
+*.log
+gui/logs/
+logs/
+backend.log
+
+# FFmpeg DLLs (should be in ffmpeg directory)
+*.dll
+
+# Run scripts
+run_gui.bat
+run_output*.log
+run_test.ps1
+test_path.kts

@@ -7,6 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import whisper for audio transcription
+import whisper
+
 # Add current directory to PATH so whisper can find ffmpeg/ffprobe
 os.environ["PATH"] = f"{os.path.abspath('.')}{os.pathsep}{os.environ['PATH']}"
 # Also add the download bin directory to PATH

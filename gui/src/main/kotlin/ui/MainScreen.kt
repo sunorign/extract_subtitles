@@ -207,14 +207,17 @@ suspend fun processFiles(
         updatedFiles[index] = fileItem.copy(status = ProcessingStatus.PROCESSING)
         onProgress(updatedFiles, "正在处理 ${fileItem.fileName} (${index + 1}/${updatedFiles.size})")
 
+        println("[DEBUG] 开始处理文件: ${fileItem.fileName}")
         val result = backendClient.processVideo(
             videoPath = fileItem.path,
             subtitleConfig = subtitleConfig,
             aiConfig = aiConfig
         )
 
+        println("[DEBUG] HTTP 请求结果: isSuccess=${result.isSuccess}")
         if (result.isSuccess) {
             val response = result.getOrNull()
+            println("[DEBUG] 响应内容: success=${response?.success}, message=${response?.message}")
             if (response != null && response.success) {
                 updatedFiles[index] = fileItem.copy(
                     status = ProcessingStatus.DONE,

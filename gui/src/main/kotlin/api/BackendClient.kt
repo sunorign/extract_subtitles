@@ -50,10 +50,16 @@ data class HealthResponse(
     val message: String
 )
 
+import java.util.concurrent.TimeUnit
+
 class BackendClient(
     private val baseUrl: String = "http://127.0.0.1:8765"
 ) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.MINUTES)  // Whisper 转录可能需要很长时间
+        .build()
     private val gson = Gson()
     private val contentType = "application/json".toMediaType()
 
